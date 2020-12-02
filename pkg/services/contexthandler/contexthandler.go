@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	errStringInvalidUsernamePassword = "Invalid username or password"
-	errStringInvalidAPIKey           = "Invalid API key"
+	errStringInvalidUsernamePassword = "invalid username or password"
+	errStringInvalidAPIKey           = "invalid API key"
 )
 
 var getTime = time.Now
