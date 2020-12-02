@@ -656,7 +656,7 @@ func middlewareScenario(t *testing.T, desc string, fn scenarioFunc) {
 
 func TestDontRotateTokensOnCancelledRequests(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	reqContext, _, err := initTokenRotationTest(t, ctx)
+	reqContext, _, err := initTokenRotationTest(ctx, t)
 	require.NoError(t, err)
 
 	tryRotateCallCount := 0
@@ -678,7 +678,7 @@ func TestDontRotateTokensOnCancelledRequests(t *testing.T) {
 }
 
 func TestTokenRotationAtEndOfRequest(t *testing.T) {
-	reqContext, rr, err := initTokenRotationTest(t, context.Background())
+	reqContext, rr, err := initTokenRotationTest(context.Background(), t)
 	require.NoError(t, err)
 
 	uts := &auth.FakeUserAuthTokenService{
@@ -709,7 +709,7 @@ func TestTokenRotationAtEndOfRequest(t *testing.T) {
 	assert.True(t, foundLoginCookie, "Could not find cookie")
 }
 
-func initTokenRotationTest(t *testing.T, ctx context.Context) (*models.ReqContext, *httptest.ResponseRecorder, error) {
+func initTokenRotationTest(ctx context.Context, t *testing.T) (*models.ReqContext, *httptest.ResponseRecorder, error) {
 	t.Helper()
 
 	origLoginCookieName := setting.LoginCookieName

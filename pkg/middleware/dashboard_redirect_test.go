@@ -36,9 +36,7 @@ func TestMiddlewareDashboardRedirect(t *testing.T) {
 
 			assert.Equal(t, 301, sc.resp.Code)
 			resp := sc.resp.Result()
-			t.Cleanup(func() {
-				_ = resp.Body.Close
-			})
+			resp.Body.Close()
 			redirectURL, err := resp.Location()
 			require.NoError(t, err)
 			assert.Equal(t, models.GetDashboardUrl(fakeDash.Uid, fakeDash.Slug), redirectURL.Path)
@@ -57,9 +55,7 @@ func TestMiddlewareDashboardRedirect(t *testing.T) {
 
 			assert.Equal(t, 301, sc.resp.Code)
 			resp := sc.resp.Result()
-			t.Cleanup(func() {
-				_ = resp.Body.Close
-			})
+			resp.Body.Close()
 			redirectURL, err := resp.Location()
 			require.NoError(t, err)
 			expectedURL := models.GetDashboardUrl(fakeDash.Uid, fakeDash.Slug)
@@ -76,9 +72,7 @@ func TestMiddlewareDashboardRedirect(t *testing.T) {
 
 		assert.Equal(t, 301, sc.resp.Code)
 		resp := sc.resp.Result()
-		t.Cleanup(func() {
-			_ = resp.Body.Close()
-		})
+		resp.Body.Close()
 		redirectURL, err := resp.Location()
 		require.NoError(t, err)
 		assert.Equal(t, "/d/asd/d/asd/dash?editPanel=12&orgId=1", redirectURL.String())
