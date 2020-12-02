@@ -4,37 +4,33 @@ import (
 	"encoding/json"
 	"testing"
 
-	. "github.com/smartystreets/goconvey/convey"
-
 	"github.com/grafana/grafana/pkg/bus"
 	authLogin "github.com/grafana/grafana/pkg/login"
 	"github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/grafana/grafana/pkg/util"
-)
-
-const (
-	errStringInvalidUsernamePassword = "invalid username or password"
-	errStringInvalidAPIKey           = "invalid API key"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMiddlewareBasicAuth(t *testing.T) {
-	const id int64 = 12
-
-	origBasicAuthEnabled := setting.BasicAuthEnabled
-	origDisableBruteForce := setting.DisableBruteForceLoginProtection
+	var origBasicAuthEnabled = setting.BasicAuthEnabled
+	var origDisableBruteForceLoginProtection = setting.DisableBruteForceLoginProtection
 	t.Cleanup(func() {
 		setting.BasicAuthEnabled = origBasicAuthEnabled
-		setting.DisableBruteForceLoginProtection = origDisableBruteForce
+		setting.DisableBruteForceLoginProtection = origDisableBruteForceLoginProtection
 	})
-	setting.DisableBruteForceLoginProtection = true
 	setting.BasicAuthEnabled = true
+	setting.DisableBruteForceLoginProtection = true
+
 	bus.ClearBusHandlers()
+
+	const id int64 = 12
 
 	middlewareScenario(t, "Valid API key", func(sc *scenarioContext) {
 		const orgID int64 = 2
 		keyhash, err := util.EncodePassword("v5nAwpMafFP6znaS4urhdWDLS5511M42", "asd")
-		So(err, ShouldBeNil)
+		require.NoError(t, err)
 
 		bus.AddHandler("test", func(query *models.GetApiKeyByNameQuery) error {
 			query.Result = &models.ApiKey{OrgId: orgID, Role: models.ROLE_EDITOR, Key: keyhash}
@@ -44,16 +40,18 @@ func TestMiddlewareBasicAuth(t *testing.T) {
 		authHeader := util.GetBasicAuthHeader("api_key", "eyJrIjoidjVuQXdwTWFmRlA2em5hUzR1cmhkV0RMUzU1MTFNNDIiLCJuIjoiYXNkIiwiaWQiOjF9")
 		sc.fakeReq("GET", "/").withAuthorizationHeader(authHeader).exec()
 
-		So(sc.resp.Code, ShouldEqual, 200)
-		So(sc.context.IsSignedIn, ShouldEqual, true)
-		So(sc.context.OrgId, ShouldEqual, orgID)
-		So(sc.context.OrgRole, ShouldEqual, models.ROLE_EDITOR)
+		assert.Equal(t, 200, sc.resp.Code)
+		assert.Equal(t, true, sc.context.IsSignedIn)
+		assert.Equal(t, orgID, sc.context.OrgId)
+		assert.Equal(t, models.ROLE_EDITOR, sc.context.OrgRole)
 	})
 
 	middlewareScenario(t, "Handle auth", func(sc *scenarioContext) {
 		const password = "MyPass"
 		const salt = "Salt"
 		const orgID int64 = 2
+
+		t.Cleanup(bus.ClearBusHandlers)
 
 		bus.AddHandler("grafana-auth", func(query *models.LoginUserQuery) error {
 			encoded, err := util.EncodePassword(password, salt)
@@ -75,11 +73,9 @@ func TestMiddlewareBasicAuth(t *testing.T) {
 		authHeader := util.GetBasicAuthHeader("myUser", password)
 		sc.fakeReq("GET", "/").withAuthorizationHeader(authHeader).exec()
 
-		So(sc.context.IsSignedIn, ShouldEqual, true)
-		So(sc.context.OrgId, ShouldEqual, orgID)
-		So(sc.context.UserId, ShouldEqual, id)
-
-		bus.ClearBusHandlers()
+		assert.Equal(t, true, sc.context.IsSignedIn)
+		assert.Equal(t, orgID, sc.context.OrgId)
+		assert.Equal(t, id, sc.context.UserId)
 	})
 
 	middlewareScenario(t, "Auth sequence", func(sc *scenarioContext) {
@@ -109,8 +105,8 @@ func TestMiddlewareBasicAuth(t *testing.T) {
 		authHeader := util.GetBasicAuthHeader("myUser", password)
 		sc.fakeReq("GET", "/").withAuthorizationHeader(authHeader).exec()
 
-		So(sc.context.IsSignedIn, ShouldEqual, true)
-		So(sc.context.UserId, ShouldEqual, id)
+		assert.Equal(t, true, sc.context.IsSignedIn)
+		assert.Equal(t, id, sc.context.UserId)
 	})
 
 	middlewareScenario(t, "Should return error if user is not found", func(sc *scenarioContext) {
@@ -119,10 +115,10 @@ func TestMiddlewareBasicAuth(t *testing.T) {
 		sc.exec()
 
 		err := json.NewDecoder(sc.resp.Body).Decode(&sc.respJson)
-		So(err, ShouldNotBeNil)
+		require.Error(t, err)
 
-		So(sc.resp.Code, ShouldEqual, 401)
-		So(sc.respJson["message"], ShouldEqual, errStringInvalidUsernamePassword)
+		assert.Equal(t, 401, sc.resp.Code)
+		assert.Equal(t, errStringInvalidUsernamePassword, sc.respJson["message"])
 	})
 
 	middlewareScenario(t, "Should return error if user & password do not match", func(sc *scenarioContext) {
@@ -135,9 +131,9 @@ func TestMiddlewareBasicAuth(t *testing.T) {
 		sc.exec()
 
 		err := json.NewDecoder(sc.resp.Body).Decode(&sc.respJson)
-		So(err, ShouldNotBeNil)
+		require.Error(t, err)
 
-		So(sc.resp.Code, ShouldEqual, 401)
-		So(sc.respJson["message"], ShouldEqual, errStringInvalidUsernamePassword)
+		assert.Equal(t, 401, sc.resp.Code)
+		assert.Equal(t, errStringInvalidUsernamePassword, sc.respJson["message"])
 	})
 }
